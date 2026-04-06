@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pulse Premium</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #0e1621; color: #e1e3e6; padding: 16px; padding-bottom: 100px; }
+    .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #17212b; margin-bottom: 20px; }
+    .header h1 { font-size: 24px; margin-bottom: 8px; background: linear-gradient(135deg, #58a6ff, #00d2ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { color: #6d7f8f; font-size: 14px; }
+    .wallet-section { background: #17212b; border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+    .wallet-info { display: flex; align-items: center; gap: 12px; }
+    .wallet-icon { width: 40px; height: 40px; background: #58a6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .wallet-text { font-size: 14px; color: #6d7f8f; }
+    .wallet-address { font-size: 12px; color: #4caf50; word-break: break-all; margin-top: 4px; }
+    .plans-title { font-size: 18px; margin-bottom: 16px; font-weight: 600; }
+    .plan { background: #17212b; border: 2px solid transparent; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .plan:hover { background: #1c2733; }
+    .plan.active { border-color: #58a6ff; background: #1c2733; }
+    .plan-info h3 { font-size: 16px; margin-bottom: 4px; }
+    .plan-info .discount { font-size: 12px; color: #4caf50; font-weight: 500; }
+    .plan-price { font-size: 20px; font-weight: 700; color: #58a6ff; }
+    .plan-usd { font-size: 12px; color: #6d7f8f; margin-top: 4px; }
+    .pay-btn { position: fixed; bottom: 16px; left: 16px; right: 16px; background: linear-gradient(135deg, #58a6ff, #00d2ff); color: #0e1621; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; display: none; }
+    .pay-btn.show { display: block; }
+    .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loader { text-align: center; padding: 40px; display: none; }
+    .loader.show { display: block; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(88, 166, 255, 0.3); border-top-color: #58a6ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .success { background: #4caf50; color: white; padding: 16px; border-radius: 12px; text-align: center; margin-top: 20px; display: none; }
+    .success.show { display: block; }
+    .error { background: #f44336; color: white; padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+    .error.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>💎 Pulse Premium</h1>
+    <p>Оплата в TON • Мгновенная активация</p>
+  </div>
+
+  <div id="error" class="error"></div>
+
+  <div class="wallet-section">
+    <div class="wallet-info">
+      <div class="wallet-icon">👛</div>
+      <div>
+        <div class="wallet-text">TON Wallet</div>
+        <div id="walletAddr" class="wallet-address">Не подключён</div>
+      </div>
+    </div>
+    <div id="tonconnect"></div>
+  </div>
+
+  <div class="plans-title">Выберите тариф:</div>
+  
+  <div id="plans">
+    <div class="plan" data-months="1" data-price="10">
+      <div class="plan-info">
+        <h3>1 месяц</h3>
+        <span class="discount">Базовая цена</span>
+      </div>
+      <div>
+        <div class="plan-price">$10</div>
+        <div class="plan-usd" id="ton-1">~0 TON</div>
+      </div>
+    </div>
+    <div class="plan" data-months="3" data-price="27">
+      <div class="plan-info">
+        <h3>3 месяца</h3>
+        <span class="discount">🔥 Экономия 10%</span>
+      </div>
+      <div>
+        <div class="plan-price">$27</div>
+        <div class="plan-usd" id="ton-3">~0 TON</div>
+      </div>
+    </div>
+    <div class="plan active" data-months="6" data-price="48">
+      <div class="plan-info">
+        <h3>6 месяцев</h3>
+        <span class="discount">🔥 Экономия 20%</span>
+      </div>
+      <div>
+        <div class="plan-price">$48</div>
+        <div class="plan-usd" id="ton-6">~0 TON</div>
+      </div>
+    </div>
+    <div class="plan" data-months="12" data-price="84">
+      <div class="plan-info">
+        <h3>1 год</h3>
+        <span class="discount">🔥 Экономия 30%</span>
+      </div>
+      <div>
+        <div class="plan-price">$84</div>
+        <div class="plan-usd" id="ton-12">~0 TON</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loader" class="loader">
+    <div class="spinner"></div>
+    <div>Обработка платежа...</div>
+  </div>
+
+  <div id="success" class="success">
+    <h2>✅ Оплата успешна!</h2>
+    <p> Premium активирован</p>
+  </div>
+
+  <button id="payBtn" class="pay-btn">Оплатить</button>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.ready();
+
+    const ADMIN_WALLET = 'UQD82sNgZ1Dr13YD2KshNG8jhg7BmL5Jd1SbhKKGJiV02FBL';
+    let selectedPlan = { months: 6, price: 48 };
+    let tonPrice = null;
+    let tonConnectUI = null;
+
+    // Инициализация TonConnect
+    async function initTonConnect() {
+      try {
+        const manifest = {
+          url: window.location.origin,
+          name: 'Pulse Premium',
+          iconUrl: 'https://ton.org/download/ton-glass-256.png'
+        };
+        
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+          manifestUrl: 'data:application/json;base64,' + btoa(JSON.stringify(manifest)),
+          buttonRootId: 'tonconnect'
+        });
+
+        tonConnectUI.onStatusChange(wallet => {
+          if (wallet) {
+            const addr = wallet.account.address;
+            document.getElementById('walletAddr').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
+            document.getElementById('walletAddr').style.color = '#4caf50';
+          } else {
+            document.getElementById('walletAddr').textContent = 'Не подключён';
+            document.getElementById('walletAddr').style.color = '#6d7f8f';
+          }
+        });
+      } catch (e) {
+        showError('Ошибка подключения кошелька: ' + e.message);
+      }
+    }
+
+    // Получение курса TON
+    async function fetchTonPrice() {
+      try {
+        const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=the-open-network&vs_currencies=usd');
+        const data = await resp.json();
+        tonPrice = data['the-open-network'].usd;
+        
+        // Обновляем отображение TON для всех тарифов
+        [1, 3, 6, 12].forEach(m => {
+          const price = {1: 10, 3: 27, 6: 48, 12: 84}[m];
+          const ton = (price / tonPrice).toFixed(2);
+          document.getElementById(`ton-${m}`).textContent = `~${ton} TON`;
+        });
+      } catch (e) {
+        console.error('Failed to fetch TON price:', e);
+        [1, 3, 6, 12].forEach(m => {
+          document.getElementById(`ton-${m}`).textContent = 'Курс недоступен';
+        });
+      }
+    }
+
+    // Выбор тарифа
+    document.querySelectorAll('.plan').forEach(plan => {
+      plan.addEventListener('click', () => {
+        document.querySelectorAll('.plan').forEach(p => p.classList.remove('active'));
+        plan.classList.add('active');
+        selectedPlan = {
+          months: parseInt(plan.dataset.months),
+          price: parseFloat(plan.dataset.price)
+        };
+        updatePayButton();
+      });
+    });
+
+    function updatePayButton() {
+      const btn = document.getElementById('payBtn');
+      const ton = tonPrice ? (selectedPlan.price / tonPrice).toFixed(2) : '...';
+      btn.textContent = `Оплатить $${selectedPlan.price} (~${ton} TON)`;
+      btn.classList.add('show');
+    }
+
+    function showError(msg) {
+      const err = document.getElementById('error');
+      err.textContent = msg;
+      err.classList.add('show');
+      setTimeout(() => err.classList.remove('show'), 5000);
+    }
+
+    // Оплата
+    document.getElementById('payBtn').addEventListener('click', async () => {
+      if (!tonConnectUI || !tonConnectUI.connected) {
+        showError('Сначала подключите TON кошелёк');
+        return;
+      }
+
+      const tonAmount = selectedPlan.price / tonPrice;
+      if (!tonAmount) {
+        showError('Не удалось рассчитать сумму в TON');
+        return;
+      }
+
+      const loader = document.getElementById('loader');
+      const payBtn = document.getElementById('payBtn');
+      
+      loader.classList.add('show');
+      payBtn.classList.remove('show');
+
+      try {
+        const transaction = {
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages: [
+            {
+              address: ADMIN_WALLET,
+              amount: (tonAmount * 1000000000).toString(), // в nanotons
+              payload: '' // Можно добавить комментарий
+            }
+          ]
+        };
+
+        const result = await tonConnectUI.sendTransaction(transaction);
+        
+        // Отправляем данные боту
+        tg.sendData(JSON.stringify({
+          action: 'premium_payment',
+          user_id: tg.initDataUnsafe.user?.id,
+          username: tg.initDataUnsafe.user?.username,
+          months: selectedPlan.months,
+          price: selectedPlan.price,
+          ton_amount: tonAmount.toFixed(2),
+          tx_hash: result.boc
+        }));
+
+        document.getElementById('success').classList.add('show');
+        setTimeout(() => tg.close(), 2000);
+        
+      } catch (e) {
+        showError('Ошибка платежа: ' + e.message);
+        loader.classList.remove('show');
+        payBtn.classList.add('show');
+      }
+    });
+
+    // Инициализация
+    initTonConnect();
+    fetchTonPrice();
+    updatePayButton();
+    
+    // Обновляем курс каждые 60 секунд
+    setInterval(fetchTonPrice, 60000);
+  </script>
+</body>
+</html>
